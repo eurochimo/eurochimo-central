@@ -107,11 +107,29 @@ def publicar_instagram(p, url, es_video):
     return graph('POST', f'{ig}/media_publish', creation_id=cont, access_token=tok)['id']
 
 
+def verificar():
+    """Prueba los accesos sin publicar nada: página, token de página e Instagram vinculado."""
+    tok = token_pagina()
+    pag = requests.get(f"{GRAPH}/{os.environ['META_PAGE_ID']}", params={'fields': 'name', 'access_token': tok}, timeout=60).json()
+    if 'error' in pag:
+        raise RuntimeError(f'Página: {pag["error"]}')
+    print(f"Página OK: {pag['name']} (token de página {'obtenido' if tok != os.environ['META_PAGE_TOKEN'] else 'NO obtenido'})")
+    ig = id_instagram()
+    cuenta = requests.get(f'{GRAPH}/{ig}', params={'fields': 'username', 'access_token': os.environ['META_PAGE_TOKEN']}, timeout=60).json()
+    if 'error' in cuenta:
+        raise RuntimeError(f'Instagram: {cuenta["error"]}')
+    print(f"Instagram OK: @{cuenta['username']} (id {ig})")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--simular', action='store_true', help='solo muestra qué publicaría')
     ap.add_argument('--ahora', help='fecha/hora a simular, "dd/mm/aaaa HH:MM"')
+    ap.add_argument('--verificar', action='store_true', help='prueba los accesos a Meta sin publicar')
     a = ap.parse_args()
+    if a.verificar:
+        verificar()
+        return
     ahora = (datetime.strptime(a.ahora, '%d/%m/%Y %H:%M').replace(tzinfo=TZ) if a.ahora
              else datetime.now(TZ))
     cola, hechos = cargar(COLA, []), cargar(HECHOS, {})
