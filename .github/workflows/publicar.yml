@@ -32,7 +32,7 @@ jobs:
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-          MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main/contenido
+          MEDIA_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@main/contenido   # entrega video/mp4 e image/jpeg (raw de GitHub no)
         run: python publicar.py ${{ inputs.modo == 'verificar' && '--verificar' || '' }}
       - name: Guardar registro de publicados
         if: always()
