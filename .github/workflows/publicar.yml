@@ -3,7 +3,13 @@ name: Publicar en Facebook e Instagram
 on:
   schedule:
     - cron: '*/15 * * * *'   # cada 15 min; el script decide qué toca según la hora de Chile
-  workflow_dispatch: {}       # botón "Run workflow" para probar a mano
+  workflow_dispatch:          # botón "Run workflow" para probar a mano
+    inputs:
+      modo:
+        description: 'verificar = probar accesos sin publicar; publicar = publicar lo que venció'
+        type: choice
+        options: [verificar, publicar]
+        default: verificar
 
 permissions:
   contents: write             # para guardar contenido/publicados.json
@@ -27,7 +33,7 @@ jobs:
           META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main/contenido
-        run: python publicar.py
+        run: python publicar.py ${{ inputs.modo == 'verificar' && '--verificar' || '' }}
       - name: Guardar registro de publicados
         if: always()
         run: |
