@@ -42,11 +42,18 @@ def clave(p):
     return f"{p['fecha']} {p['hora']} {p['archivo']}"
 
 
+def guardar(hechos):
+    with open(HECHOS, 'w', encoding='utf-8') as f:
+        json.dump(hechos, f, ensure_ascii=False, indent=1)
+
+
 def vencidas(cola, hechos, ahora):
     out = []
     for p in cola:
-        cuando = datetime.strptime(f"{p['fecha']} {p['hora']}:00", '%d/%m/%Y %H:%M').replace(tzinfo=TZ)
-        if clave(p) not in hechos and cuando <= ahora < cuando + VENTANA:
+        hora = p['hora'] if ':' in p['hora'] else f"{p['hora']}:00"  # "14" o "12:40"
+        cuando = datetime.strptime(f"{p['fecha']} {hora}", '%d/%m/%Y %H:%M').replace(tzinfo=TZ)
+        completa = 'instagram' in hechos.get(clave(p), {})
+        if not completa and cuando <= ahora < cuando + VENTANA:
             out.append(p)
     return out
 
@@ -140,16 +147,20 @@ def main():
     for p in pendientes:
         es_video = p['archivo'].lower().endswith('.mp4')
         url = f"{base}/{quote(p['archivo'])}"
-        print(f"  → {p['fecha']} {p['hora']}:00 {p['archivo']} ({'reel' if es_video else 'imagen'})")
+        print(f"  → {p['fecha']} {p['hora']} h {p['archivo']} ({'reel' if es_video else 'imagen'})")
         if a.simular:
             continue
+        reg = hechos.setdefault(clave(p), {})
         try:
-            fb = publicar_facebook(p, url, es_video)
-            ig = publicar_instagram(p, url, es_video)
-            hechos[clave(p)] = {'facebook': fb, 'instagram': ig, 'hora': datetime.now(TZ).isoformat()}
-            with open(HECHOS, 'w', encoding='utf-8') as f:
-                json.dump(hechos, f, ensure_ascii=False, indent=1)
-            print(f'    publicado (FB {fb}, IG {ig})')
+            # se guarda cada red apenas sale, para que un reintento no duplique la que ya se publicó
+            if 'facebook' not in reg:
+                reg['facebook'] = publicar_facebook(p, url, es_video)
+                guardar(hechos)
+            if 'instagram' not in reg:
+                reg['instagram'] = publicar_instagram(p, url, es_video)
+            reg['hora'] = datetime.now(TZ).isoformat()
+            guardar(hechos)
+            print(f"    publicado (FB {reg['facebook']}, IG {reg['instagram']})")
         except Exception as e:  # sigue con las demás y deja el error visible en el log
             errores += 1
             print(f'    ERROR: {e}')
