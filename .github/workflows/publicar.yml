@@ -1,0 +1,37 @@
+name: Publicar en Facebook e Instagram
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'   # cada 15 min; el script decide qué toca según la hora de Chile
+  workflow_dispatch: {}       # botón "Run workflow" para probar a mano
+
+permissions:
+  contents: write             # para guardar contenido/publicados.json
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Publicar lo que venció
+        env:
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_PAGE_TOKEN: ${{ secrets.META_PAGE_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          MEDIA_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/main/contenido
+        run: python publicar.py
+      - name: Guardar registro de publicados
+        if: always()
+        run: |
+          git config user.name "eurochimo-bot"
+          git config user.email "contacto@eurochimo.cl"
+          git add contenido/publicados.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Registro de publicaciones" && git push)
